@@ -16,19 +16,17 @@ const styles = {
 function App() {
   const [taskBoard, setTaskBoard] = useState<Board | null>(null)
 
-  useEffect(() => {
+  const update = () => {
     axios
       .get('http://localhost:3000/todos')
       .then((res: AxiosResponse<Board>) => {
+        console.log(res.data)
         setTaskBoard(res.data)
       })
-  }, [])
-
-  const create = () => {
-    const params = new URLSearchParams()
-    params.append('title', 'test')
-    axios.post('http://localhost:3000/todos/create', params)
   }
+  useEffect(() => {
+    update()
+  }, [])
 
   if (taskBoard === null) {
     return <Empty />
@@ -36,8 +34,7 @@ function App() {
 
   return (
     <div className={styles.root}>
-      <TaskBoard taskBoard={taskBoard} />
-      <button onClick={create}>ボタン</button>
+      <TaskBoard taskBoard={taskBoard} update={update} />
     </div>
   )
 }

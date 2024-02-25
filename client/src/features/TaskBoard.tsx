@@ -1,14 +1,17 @@
-import { FC, useEffect, useState } from 'react'
-import { Board, Task } from '../models/Todo'
+import { FC, useState } from 'react'
+import { Board } from '../models/Todo'
 import { Color } from '../utils/Color'
 import { Card } from './Card'
 import { css } from '@emotion/css'
 import { CheckBox } from './CheckBox'
 import { TaskCard } from './TaskCard'
 import axios from 'axios'
+import { Button } from './Button'
+import Modal from 'react-modal'
 
 type Props = {
   taskBoard: Board
+  update: () => void
 }
 
 const styles = {
@@ -43,13 +46,57 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: '8px'
+  }),
+  wrapper: css({
+    display: 'flex',
+    justifyContent: 'space-between'
+  }),
+  modal_root: css({
+    display: 'flex',
+    flexDirection: 'column'
+  }),
+  modal_title: css({
+    fontSize: '24px',
+    color: Color.black
+  }),
+  modal_input: css({
+    marginTop: '16px',
+    width: '584px',
+    height: '48px',
+    borderRadius: '8px',
+    fontSize: '20px',
+    paddingLeft: '8px'
+  }),
+  modal_right: css({
+    display: 'flex',
+    justifyContent: 'end'
+  }),
+  modal_button_wrapper: css({
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    background: Color.white,
+    marginTop: '16px',
+    width: '80px'
   })
 }
 
-export const TaskBoard: FC<Props> = ({ taskBoard }) => {
-  const [checked, setChecked] = useState(false)
+const modalStyles = {
+  content: {
+    top: '50%',
+    left: '50%',
+    right: 'auto',
+    bottom: 'auto',
+    marginRight: '-50%',
+    transform: 'translate(-50%, -50%)',
+    width: '600px'
+  }
+}
 
-  const [tasks, setTasks] = useState<Task[]>(taskBoard.tasks)
+export const TaskBoard: FC<Props> = ({ taskBoard, update }) => {
+  const [checked, setChecked] = useState(false)
+  const [isOpen, setIsOpen] = useState(false)
+  const [title, setTitle] = useState('')
 
   const clickCheckBox = () => {
     if (checked) {
@@ -62,35 +109,45 @@ export const TaskBoard: FC<Props> = ({ taskBoard }) => {
   const taskRemove = (id: number) => {
     const params = new URLSearchParams()
     params.append('id', `${id}`)
-    axios.post('http://localhost:3000/todos/delete', params)
-    const updatedTasks = tasks.filter((task) => id !== task.id)
-    setTasks(updatedTasks)
+    axios.post('http://localhost:3000/todos/delete', params).then(() => {
+      update()
+    })
   }
 
   const changeStatus = (id: number) => {
     const params = new URLSearchParams()
     params.append('id', `${id}`)
-    axios.post('http://localhost:3000/todos/update', params)
-    const updatedTasks = tasks.map((task) => {
-      return task.id === id
-        ? {
-            ...task,
-            isDone: !task.isDone
-          }
-        : {
-            ...task
-          }
+    axios.post('http://localhost:3000/todos/update', params).then(() => {
+      update()
     })
-    setTasks(updatedTasks)
   }
 
-  useEffect(() => {
-    console.log({ tasks })
-  }, [tasks])
+  const createTask = () => {
+    const params = new URLSearchParams()
+    params.append('title', title)
+    axios
+      .post('http://localhost:3000/todos/create', params)
+      .then(() => {
+        update()
+      })
+      .finally(() => {
+        closeModal()
+        setTitle('')
+      })
+  }
 
-  const doneCount = tasks.filter((task) => !task.isDone).length
-  const doingCount = tasks.filter((task) => task.isDone).length
-  const taskCount = tasks.length
+  const openModal = () => {
+    console.log('open')
+    setIsOpen(true)
+  }
+
+  const closeModal = () => {
+    setIsOpen(false)
+  }
+
+  const doneCount = taskBoard.tasks.filter((task) => !task.isDone).length
+  const doingCount = taskBoard.tasks.filter((task) => task.isDone).length
+  const taskCount = taskBoard.tasks.length
 
   return (
     <div className={styles.root}>
@@ -105,13 +162,16 @@ export const TaskBoard: FC<Props> = ({ taskBoard }) => {
           />
         </div>
         <div className={styles.vr} />
-        <CheckBox
-          checked={checked}
-          text="完了済みを表示"
-          clickHandler={clickCheckBox}
-        />
+        <div className={styles.wrapper}>
+          <CheckBox
+            checked={checked}
+            text="完了済みを表示"
+            clickHandler={clickCheckBox}
+          />
+          <Button text="作成" clickHandler={openModal} />
+        </div>
         <div className={styles.list}>
-          {tasks
+          {taskBoard.tasks
             .filter((task) => (checked ? true : !task.isDone))
             .map((task) => {
               return (
@@ -126,6 +186,21 @@ export const TaskBoard: FC<Props> = ({ taskBoard }) => {
             })}
         </div>
       </div>
+      <Modal isOpen={isOpen} style={modalStyles} onRequestClose={closeModal}>
+        <div className={styles.modal_root}>
+          <div className={styles.modal_title}>タスクを作成</div>
+          <input
+            className={styles.modal_input}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <div className={styles.modal_right}>
+            <div className={styles.modal_button_wrapper}>
+              <Button text="作成" clickHandler={createTask} />
+            </div>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
