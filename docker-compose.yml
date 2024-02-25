@@ -1,0 +1,20 @@
+version: "3"
+
+services:
+  client:
+    image: node:16
+    working_dir: /app
+    volumes:
+      - ./client:/app
+    ports:
+      - 8000:5173
+    command: npm run dev
+
+  server:
+    image: node:16
+    working_dir: /app
+    volumes:
+      - ./server:/app
+    ports:
+      - 3000:3000
+    command: npm run dev
